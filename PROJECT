@@ -1,0 +1,6 @@
+domain: kubesphere.io
+layout:
+- go.kubebuilder.io/v3
+projectName: dockerproxy-webhook
+repo: github.com/wuxs/dockerproxy-webhook
+version: "3"
