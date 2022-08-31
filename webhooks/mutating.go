@@ -31,8 +31,8 @@ func (a *Mutating) Handle(ctx context.Context, req admission.Request) admission.
 		return admission.Allowed("skip")
 	}
 
-	obj := &corev1.ConfigMap{}
-	err := a.Client.Get(ctx, client.ObjectKey{Namespace: req.Namespace, Name: ConfigMapName}, obj)
+	cm := &corev1.ConfigMap{}
+	err := a.Client.Get(ctx, client.ObjectKey{Namespace: req.Namespace, Name: ConfigMapName}, cm)
 	if err != nil {
 		return admission.Allowed("skip")
 	}
@@ -44,17 +44,22 @@ func (a *Mutating) Handle(ctx context.Context, req admission.Request) admission.
 		return admission.Allowed("skip")
 	}
 	containers := make([]corev1.Container, 0)
+	// docker.io/xxx/xxx:xxx
+	// xxx/xxx:xxx
+	// xxx:xxx
 	for _, container := range pod.Spec.Containers {
-		items := strings.Split(container.Image, "/")
-		if len(items) < 2 {
-			continue
+		if container.Image != "" {
+			items := strings.Split(container.Image, "/")
+			if len(items) == 1 {
+				items = append([]string{"docker.io"}, items...)
+			} else if len(items) == 2 {
+				items = append([]string{"docker.io"}, items...)
+			}
+			if ori, ok := cm.Data[items[0]]; ok {
+				items[0] = strings.TrimSpace(ori)
+			}
+			container.Image = strings.Join(items, "/")
 		}
-		if len(items) == 2 {
-			items = append([]string{"dockerproxy.com"}, items...)
-		} else if items[0] == "docker.io" {
-			items[0] = "dockerproxy.com"
-		}
-		container.Image = strings.Join(items, "/")
 		containers = append(containers, container)
 	}
 	pod.Spec.Containers = containers
